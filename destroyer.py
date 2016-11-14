@@ -38,6 +38,8 @@ marketDomain=config.get("marketDomain",marketLocale)
 apiEnv=config.get("clientId","apiEnv")
 clientId=config.get("clientId",parametersLocale)
 sitekey=config.get("sitekey",parametersLocale)
+username=config.get("user", "username")
+password=config.get("user", "password")
 #Pull info necessary for a Yeezy drop
 duplicate=config.get("duplicate","duplicate")
 cookies=config.get("cookie","cookie")
@@ -803,3 +805,32 @@ def harvestTokensManually():
     elapsedTime = currentTime - startTime
     print (d_()+s_("Total Time Elapsed")+lb_(str(round(elapsedTime,2)) + " seconds"))
   browser.quit()
+
+def login():
+    '''
+    Login to Adidas
+    '''
+    import logging
+    logging.basicConfig(level=logging.DEBUG if __debug__ else logging.INFO)
+    if not username and password:
+        logging.warn('Cannot login. No username/password in config.cfg')
+        return false
+    browser = getChromeDriver(chromeFolderLocation='ChromeTokenHarvestFolder')
+    browser.implicitly_wait(20)  # seconds to wait for page load after click
+    browser.get('https://www.%s/' % marketDomain)
+    login_link = browser.find_element_by_xpath('//*[@class="selfservice-link-login"]')
+    if login_link.tag_name != 'a':
+        logging.debug('Trying to find a.href under %s', login_link.tag_name)
+        login_link = login_link.find_element_by_xpath('./a')
+    login_link.click()
+    browser.switch_to_frame('loginaccountframe')
+    inputs = browser.find_elements_by_tag_name('input')
+    logging.debug('Found inputs: %s', [i.get_attribute('name') for i in inputs])
+    input_username = browser.find_element_by_name('username')
+    input_password = browser.find_element_by_name('password')
+    submit = browser.find_element_by_name('signinSubmit')
+    logging.debug('Found login page successfully, so logging in')
+    input_username.send_keys(username)
+    input_password.send_keys(password)
+    submit.click()
+    logging.debug('Waiting for login success or failure')
