@@ -815,7 +815,7 @@ def login():
     if not username and password:
         logging.warn('Cannot login. No username/password in config.cfg')
         return false
-    browser = getChromeDriver(chromeFolderLocation='ChromeTokenHarvestFolder')
+    browser = getChromeDriver(chromeFolderLocation='ChromeFolder')
     browser.implicitly_wait(20)  # seconds to wait for page load after click
     browser.get('https://www.%s/' % marketDomain)
     login_link = browser.find_element_by_xpath('//*[@class="selfservice-link-login"]')
