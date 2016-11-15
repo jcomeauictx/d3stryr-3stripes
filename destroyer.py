@@ -771,3 +771,5 @@ def login():
     input_password.send_keys(password)
     submit.click()
     logging.debug('Waiting for login success or failure')
+    logout = browser.find_element_by_xpath('//div[@class="not_user"]')
+    return logout is not None
