@@ -520,7 +520,9 @@ def processAddToCart(productInfo):
     harvestTokensManually()
     for index in range(0,len(captchaTokens)):
       captchaTokensReversed.append(captchaTokens.pop())
-
+  browser = getChromeDriver(chromeFolderLocation='ChromeFolder')
+  browser.implicitly_wait(30)  # seconds to wait for page load after click
+  login(browser)
   for mySize in mySizes:
     try:
       mySizeATS=productInfo["productStock"][mySize]["ATS"]
@@ -539,11 +541,12 @@ def processAddToCart(productInfo):
         else:
           #No manual tokens to pop - so lets use 2captcha
           captchaToken=getACaptchaTokenFrom2Captcha()
-      addToCartChromeAJAX(pid,captchaToken)
+      addToCartChromeAJAX(pid,captchaToken,browser)
     except:
       print (d_()+x_("Add-To-Cart")+lr_(mySize+" : "+"Not Found"))
 
 #We use selenium for browser automation
+import selenium
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
@@ -580,7 +583,7 @@ def getChromeDriver(chromeFolderLocation=None):
   driver = webdriver.Chrome(chromedriver,chrome_options=chrome_options)
   return driver
 
-def addToCartChromeAJAX(pid,captchaToken):
+def addToCartChromeAJAX(pid,captchaToken,browser=None):
   if marketLocale == "PT":
     baseADCUrl="http://www."+marketDomain+"/on/demandware.store/Sites-adidas-"+"MLT"+"-Site/"+market
   else:
@@ -631,8 +634,9 @@ def addToCartChromeAJAX(pid,captchaToken):
     print(d_()+z_("Debug")+o_(json.dumps(data,indent=2)))
     print(d_()+z_("Debug")+o_(script))
     print(d_()+z_("Debug")+o_(externalScript))
-  browser=getChromeDriver(chromeFolderLocation="ChromeFolder")
-  browser.delete_all_cookies()
+  if not browser:
+    browser=getChromeDriver(chromeFolderLocation="ChromeFolder")
+    browser.delete_all_cookies()
   browser.get(baseADCUrl)
   if (len(scriptURL) > 0) and (".js" in scriptURL):
     print (d_()+s_("External Script"))
@@ -743,7 +747,7 @@ def harvestTokensManually():
     print (d_()+s_("Total Time Elapsed")+lb_(str(round(elapsedTime,2)) + " seconds"))
   browser.quit()
 
-def login():
+def login(browser=None):
     '''
     Login to Adidas
     '''
@@ -752,8 +756,8 @@ def login():
     if not username and password:
         logging.warn('Cannot login. No username/password in config.cfg')
         return false
-    browser = getChromeDriver(chromeFolderLocation='ChromeFolder')
-    browser.implicitly_wait(20)  # seconds to wait for page load after click
+    if browser is None:
+        browser = getChromeDriver(chromeFolderLocation='ChromeFolder')
     browser.get('https://www.%s/' % marketDomain)
     login_link = browser.find_element_by_xpath('//*[@class="selfservice-link-login"]')
     if login_link.tag_name != 'a':
@@ -771,5 +775,9 @@ def login():
     input_password.send_keys(password)
     submit.click()
     logging.debug('Waiting for login success or failure')
-    logout = browser.find_element_by_xpath('//div[@class="not_user"]')
+    try:
+        logout = browser.find_element_by_xpath('//div[@class="not_user"]')
+    except selenium.common.exceptions.NoSuchElementException:
+        logging.debug('Could not find `logout` link container')
+        logout = None
     return logout is not None
