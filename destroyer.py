@@ -522,7 +522,6 @@ def processAddToCart(productInfo):
       captchaTokensReversed.append(captchaTokens.pop())
   browser = getChromeDriver(chromeFolderLocation='ChromeFolder')
   browser.implicitly_wait(30)  # seconds to wait for page load after click
-  login(browser)
   for mySize in mySizes:
     try:
       mySizeATS=productInfo["productStock"][mySize]["ATS"]
@@ -542,6 +541,7 @@ def processAddToCart(productInfo):
           #No manual tokens to pop - so lets use 2captcha
           captchaToken=getACaptchaTokenFrom2Captcha()
       addToCartChromeAJAX(pid,captchaToken,browser)
+      login(browser)
     except:
       print (d_()+x_("Add-To-Cart")+lr_(mySize+" : "+"Not Found"))
 
