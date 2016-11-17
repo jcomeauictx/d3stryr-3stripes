@@ -42,6 +42,7 @@ clientId=config.get("clientId",parametersLocale)
 sitekey=config.get("sitekey",parametersLocale)
 username=config.get("user", "username")
 password=config.get("user", "password")
+proxy=config.get("user", "proxy")
 #Pull info necessary for a Yeezy drop
 duplicate=config.get("duplicate","duplicate")
 cookies=config.get("cookie","cookie")
@@ -524,6 +525,12 @@ def processAddToCart(productInfo):
       captchaTokensReversed.append(captchaTokens.pop())
   logging.debug('starting browser')
   browser = getChromeDriver(chromeFolderLocation='ChromeFolder')
+  '''
+  purge previous purchase record from cookies.
+  FIXME: use mktemp instead of fixed directory each time, and we can
+  eliminate this.
+  '''
+  browser.delete_all_cookies()
   browser.implicitly_wait(30)  # seconds to wait for page load after click
   logging.debug('beginning order loop')
   for mySize in mySizes:
@@ -586,7 +593,8 @@ def getChromeDriver(chromeFolderLocation=None):
   #We store the browsing session in ChromeFolder so we can manually delete it if necessary
   if chromeFolderLocation is not None:
     chrome_options.add_argument("--user-data-dir="+chromeFolderLocation)
-
+  if proxy:
+    chrome_options.add_argument("--proxy=%s" % proxy)
   driver = webdriver.Chrome(chromedriver,chrome_options=chrome_options)
   return driver
 
@@ -671,7 +679,6 @@ def addToCartChromeAJAX(pid,captchaToken,browser=None):
     temp=input("Press Enter to Continue")
 
   #Need to delete all the cookes for this session or else we will have the previous size in cart
-  browser.delete_all_cookies()
   return
 
 from selenium.webdriver.common.by import By
