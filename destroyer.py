@@ -538,7 +538,7 @@ def processAddToCart(productInfo):
     try:
       mySizeATS=productInfo["productStock"][mySize]["ATS"]
       if mySizeATS == 0:
-        loggign.debug('no size %s available', mySize)
+        logging.debug('no size %s available', mySize)
         continue
       print (d_()+s_("Add-To-Cart")+mySize+" : "+str(mySizeATS))
       pid=productInfo["productStock"][mySize]["pid"]
@@ -593,8 +593,14 @@ def getChromeDriver(chromeFolderLocation=None):
   #We store the browsing session in ChromeFolder so we can manually delete it if necessary
   if chromeFolderLocation is not None:
     chrome_options.add_argument("--user-data-dir="+chromeFolderLocation)
-  if proxy:
-    chrome_options.add_argument("--proxy=%s" % proxy)
+  if False and proxy:
+    '''
+    with --proxy-server enabled, browser fails to work, even on the bypassed
+    site. it works from the command line, but not with chromedriver
+    '''
+    chrome_options.add_argument('--proxy-server="%s"' % proxy)
+    chrome_options.add_argument('--proxy-bypass-list="%s:%s"' % (
+      harvestDomain, phpServerPort))
   driver = webdriver.Chrome(chromedriver,chrome_options=chrome_options)
   return driver
 
