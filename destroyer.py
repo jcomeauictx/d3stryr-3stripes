@@ -1,4 +1,6 @@
 import configparser
+import logging
+logging.basicConfig(level=logging.DEBUG if __debug__ else logging.INFO)
 #Parse configuration file
 config = configparser.ConfigParser()
 configFilePath = "config.cfg"
@@ -520,12 +522,16 @@ def processAddToCart(productInfo):
     harvestTokensManually()
     for index in range(0,len(captchaTokens)):
       captchaTokensReversed.append(captchaTokens.pop())
+  logging.debug('starting browser')
   browser = getChromeDriver(chromeFolderLocation='ChromeFolder')
   browser.implicitly_wait(30)  # seconds to wait for page load after click
+  logging.debug('beginning order loop')
   for mySize in mySizes:
+    logging.debug('ordering size %s', mySize)
     try:
       mySizeATS=productInfo["productStock"][mySize]["ATS"]
       if mySizeATS == 0:
+        loggign.debug('no size %s available', mySize)
         continue
       print (d_()+s_("Add-To-Cart")+mySize+" : "+str(mySizeATS))
       pid=productInfo["productStock"][mySize]["pid"]
@@ -542,7 +548,8 @@ def processAddToCart(productInfo):
           captchaToken=getACaptchaTokenFrom2Captcha()
       addToCartChromeAJAX(pid,captchaToken,browser)
       login(browser)
-    except:
+      browser.quit()
+    except KeyError:
       print (d_()+x_("Add-To-Cart")+lr_(mySize+" : "+"Not Found"))
 
 #We use selenium for browser automation
@@ -584,6 +591,7 @@ def getChromeDriver(chromeFolderLocation=None):
   return driver
 
 def addToCartChromeAJAX(pid,captchaToken,browser=None):
+  logging.debug('starting addToCartChromeAJAX()')
   if marketLocale == "PT":
     baseADCUrl="http://www."+marketDomain+"/on/demandware.store/Sites-adidas-"+"MLT"+"-Site/"+market
   else:
@@ -654,17 +662,16 @@ def addToCartChromeAJAX(pid,captchaToken,browser=None):
     print(d_()+z_("Debug")+o_("\n"+html_source))
   if (len(productCount) == 1) and (int(productCount) > 0):
     results=browser.execute_script("window.location='"+cartURL+"'")
-    temp=input("Press Enter to Close the Browser & Continue")
+    temp=input("Press Enter to Continue")
   else:
     print (d_()+x_("Product Count")+lr_(productCount))
 
   #Maybe the Product Count source has changed and we are unable to parse correctly.
   if pauseBeforeBrowserQuit:
-    temp=input("Press Enter to Close the Browser & Continue")
+    temp=input("Press Enter to Continue")
 
   #Need to delete all the cookes for this session or else we will have the previous size in cart
   browser.delete_all_cookies()
-  browser.quit()
   return
 
 from selenium.webdriver.common.by import By
@@ -751,8 +758,6 @@ def login(browser=None):
     '''
     Login to Adidas
     '''
-    import logging
-    logging.basicConfig(level=logging.DEBUG if __debug__ else logging.INFO)
     if not username and password:
         logging.warn('Cannot login. No username/password in config.cfg')
         return false
