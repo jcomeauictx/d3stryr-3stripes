@@ -3,6 +3,10 @@ import logging
 import tempfile
 logging.basicConfig(level=logging.DEBUG if __debug__ else logging.INFO)
 #Parse configuration file
+CONFIG = configparser.ConfigParser()
+CONFIG.read('config.cfg')
+USER = dict(CONFIG.items('user'))
+HARVEST = dict(CONFIG.items('harvest'))
 config = configparser.ConfigParser()
 configFilePath = "config.cfg"
 config.read(configFilePath)
@@ -41,9 +45,6 @@ marketDomain=config.get("marketDomain",marketLocale)
 apiEnv=config.get("clientId","apiEnv")
 clientId=config.get("clientId",parametersLocale)
 sitekey=config.get("sitekey",parametersLocale)
-username=config.get("user", "username")
-password=config.get("user", "password")
-PROXY = config.get("user", "proxy")
 #Pull info necessary for a Yeezy drop
 duplicate=config.get("duplicate","duplicate")
 cookies=config.get("cookie","cookie")
@@ -527,7 +528,7 @@ def processAddToCart(productInfo):
   logging.debug('starting browser')
   cache = tempfile.mkdtemp(suffix='.adidas.chrome')
   logging.debug('browser cache: %s', cache)
-  browser = getChromeDriver(chromeFolderLocation=cache, proxy=PROXY)
+  browser = getChromeDriver(chromeFolderLocation=cache)
   browser.implicitly_wait(30)  # seconds to wait for page load after click
   logging.debug('beginning order loop')
   for mySize in mySizes:
@@ -561,7 +562,7 @@ import selenium
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
-def getChromeDriver(chromeFolderLocation=None, proxy=''):
+def getChromeDriver(chromeFolderLocation=None):
   chromedriver=None
   if "nt" in os.name:
   #Es ventanas?
@@ -590,12 +591,12 @@ def getChromeDriver(chromeFolderLocation=None, proxy=''):
   #We store the browsing session in ChromeFolder so we can manually delete it if necessary
   if chromeFolderLocation is not None:
     chrome_options.add_argument("--user-data-dir="+chromeFolderLocation)
-  if False and proxy:
+  if False and USER.get('proxy', ''):
     '''
     with --proxy-server enabled, browser fails to work
     it works from the command line, but not with chromedriver
     '''
-    chrome_options.add_argument('--proxy-server="%s"' % proxy)
+    chrome_options.add_argument('--proxy-server="%s"' % USER['proxy'])
   driver = webdriver.Chrome(chromedriver,chrome_options=chrome_options)
   return driver
 
@@ -654,7 +655,7 @@ def addToCartChromeAJAX(pid,captchaToken,browser=None):
   if not browser:
     cache = tempfile.mkdtemp(suffix='.adidas.chrome')
     logging.debug('browser cache: %s', cache)
-    browser=getChromeDriver(chromeFolderLocation=cache, proxy=PROXY)
+    browser=getChromeDriver(chromeFolderLocation=cache)
   browser.get(baseADCUrl)
   if (len(scriptURL) > 0) and (".js" in scriptURL):
     print (d_()+s_("External Script"))
@@ -774,13 +775,13 @@ def login(browser=None, has_link=False):
     Set has_link to True if the currently loaded page is expected to already
     have a login link.
     '''
-    if not username and password:
+    if not USER.get('username', '') and USER.get('password', ''):
         logging.warn('Cannot login. No username/password in config.cfg')
         return false
     if browser is None:
         cache = tempfile.mkdtemp(suffix='.adidas.chrome')
         logging.debug('browser cache: %s', cache)
-        browser = getChromeDriver(chromeFolderLocation=cache, proxy=PROXY)
+        browser = getChromeDriver(chromeFolderLocation=cache)
     if not has_link:
         browser.get('https://www.%s/' % marketDomain)
     login_link = browser.find_element_by_xpath('//*[@class="selfservice-link-login"]')
@@ -795,8 +796,8 @@ def login(browser=None, has_link=False):
     input_password = browser.find_element_by_name('password')
     submit = browser.find_element_by_name('signinSubmit')
     logging.debug('Found login page successfully, so logging in')
-    input_username.send_keys(username)
-    input_password.send_keys(password)
+    input_username.send_keys(USER['username'])
+    input_password.send_keys(USER['password'])
     submit.click()
     logging.debug('Waiting for login success or failure')
     try:
