@@ -1,12 +1,14 @@
-import configparser
-import logging
-import tempfile
+#!/usr/bin/env python3
+import sys, os, configparser, logging, tempfile, multiprocessing, time, datetime
 logging.basicConfig(level=logging.DEBUG if __debug__ else logging.INFO)
+# make sure we're in same directory as config.cfg
+os.chdir(os.path.dirname(sys.argv[0]))
 #Parse configuration file
 CONFIG = configparser.ConfigParser()
 CONFIG.read('config.cfg')
-USER = dict(CONFIG.items('user'))
-HARVEST = dict(CONFIG.items('harvest'))
+logging.debug('configuration sections: %s', CONFIG.sections())
+USER = CONFIG['user']
+HARVEST = CONFIG['harvest']
 config = configparser.ConfigParser()
 configFilePath = "config.cfg"
 config.read(configFilePath)
@@ -67,9 +69,6 @@ exitCode = 1
 #Lets try to keep a revision tracking via commit number.
 revision="c+72"
 
-#We will use os to acquire details of the operating system so we can determine if we are on Windows or not.
-import os
-
 if "nt" in os.name:
 #We remove ANSI coloring for Windows
   class color:
@@ -121,9 +120,6 @@ else:
     pink='\033[95m'
     lightcyan='\033[96m'
 
-#We use datetime to acquire the date and time
-import datetime
-
 #In a threaded setup you can identify a printed line by its threadId - I just call it destroyerId
 def d_(destroyerId=None):
   if destroyerId is not None:
@@ -173,9 +169,6 @@ def printRunParameters():
   print(d_()+s_("Debug")+lb_(debug))
   print(d_()+s_("External Script URL")+lb_(scriptURL))
   print(d_()+s_("Pause Between ATC")+lb_(pauseBeforeBrowserQuit))
-
-#Import sys so we can exit the script when its likely to fail
-import sys
 
 def checkParameters():
   nah = False
@@ -737,6 +730,36 @@ def getToken(driver,mainWindow):
     print (d_()+s_("Get Token")+lb_(token))
   return token
 
+def harvest_tokens(number=1):
+    '''
+    Harvest captcha tokens from PHP page running locally
+
+    These tokens can then be passed to Adidas within 120 seconds to bypass
+    their captchas.
+    '''
+    tokens = []
+    elapsed = 0
+    wait = 120 - 5  # need some time to purchase before tokens expire
+    cache = tempfile.mkdtemp(suffix='.tokenharvest.chrome')
+    logging.debug('browser cache: %s', cache)
+    browser = getChromeDriver(chromeFolderLocation=cache)
+    url = 'http://%s:%s/harvest.php' % (
+        HARVEST['harvestDomain'], HARVEST['phpServerPort'])
+    while len(tokens) < number:
+        wait -= elapsed
+        if wait < 3:  # minimum seconds needed to solve captcha
+            break
+        browser.implicitly_wait(wait)
+        start = time.time()
+        browser.get(url)
+        token_element = browser.find_element_by_id('token')
+        logging.debug('token_element found: %s', token_element)
+        token = token_element.get_attribute("value")
+        tokens.append(token)
+        end = time.time()
+        elapsed += end - start
+    return tokens
+
 def harvestTokensManually():
   print (d_()+s_("Manual Token Harvest")+lb_("Number of tokens harvested: "+str(len(captchaTokens))))
   cache = tempfile.mkdtemp(suffix='.tokenharvest.chrome')
@@ -784,7 +807,8 @@ def login(browser=None, has_link=False):
         browser = getChromeDriver(chromeFolderLocation=cache)
     if not has_link:
         browser.get('https://www.%s/' % marketDomain)
-    login_link = browser.find_element_by_xpath('//*[@class="selfservice-link-login"]')
+    login_link = browser.find_element_by_xpath(
+        '//*[@class="selfservice-link-login"]')
     if login_link.tag_name != 'a':
         logging.debug('Trying to find a.href under %s', login_link.tag_name)
         login_link = login_link.find_element_by_xpath('./a')
@@ -806,3 +830,9 @@ def login(browser=None, has_link=False):
         logging.debug('Could not find `logout` link container')
         logout = None
     return logout is not None
+
+if __name__ == '__main__':
+    # allows for testing individual routines from command line
+    command = sys.argv[1]
+    if command in globals():
+        print(eval(command)(*sys.argv[2:]))
