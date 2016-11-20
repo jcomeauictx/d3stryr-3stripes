@@ -551,7 +551,7 @@ def processAddToCart(productInfo):
           #No manual tokens to pop - so lets use 2captcha
           captchaToken=getACaptchaTokenFrom2Captcha()
       addToCartChromeAJAX(pid,captchaToken,browser)
-      login(browser)
+      login(browser, has_link=True)
       browser.quit()
     except KeyError:
       print (d_()+x_("Add-To-Cart")+lr_(mySize+" : "+"Not Found"))
@@ -672,7 +672,7 @@ def addToCartChromeAJAX(pid,captchaToken,browser=None):
     print(d_()+z_("Debug")+o_("\n"+html_source))
   if (len(productCount) == 1) and (int(productCount) > 0):
     results=browser.execute_script("window.location='"+cartURL+"'")
-    temp=input("Press Enter to Continue")
+    time.sleep(10 if __debug__ else 0.5)
   else:
     print (d_()+x_("Product Count")+lr_(productCount))
 
@@ -765,9 +765,14 @@ def harvestTokensManually():
     print (d_()+s_("Total Time Elapsed")+lb_(str(round(elapsedTime,2)) + " seconds"))
   browser.quit()
 
-def login(browser=None):
+def login(browser=None, has_link=False):
     '''
     Login to Adidas
+
+    Pass in a WebDriver object as browser if one is already in use.
+
+    Set has_link to True if the currently loaded page is expected to already
+    have a login link.
     '''
     if not username and password:
         logging.warn('Cannot login. No username/password in config.cfg')
@@ -776,7 +781,8 @@ def login(browser=None):
         cache = tempfile.mkdtemp(suffix='.adidas.chrome')
         logging.debug('browser cache: %s', cache)
         browser = getChromeDriver(chromeFolderLocation=cache, proxy=PROXY)
-    browser.get('https://www.%s/' % marketDomain)
+    if not has_link:
+        browser.get('https://www.%s/' % marketDomain)
     login_link = browser.find_element_by_xpath('//*[@class="selfservice-link-login"]')
     if login_link.tag_name != 'a':
         logging.debug('Trying to find a.href under %s', login_link.tag_name)
