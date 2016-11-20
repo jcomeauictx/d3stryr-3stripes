@@ -1,5 +1,6 @@
 import configparser
 import logging
+import tempfile
 logging.basicConfig(level=logging.DEBUG if __debug__ else logging.INFO)
 #Parse configuration file
 config = configparser.ConfigParser()
@@ -42,7 +43,7 @@ clientId=config.get("clientId",parametersLocale)
 sitekey=config.get("sitekey",parametersLocale)
 username=config.get("user", "username")
 password=config.get("user", "password")
-proxy=config.get("user", "proxy")
+PROXY = config.get("user", "proxy")
 #Pull info necessary for a Yeezy drop
 duplicate=config.get("duplicate","duplicate")
 cookies=config.get("cookie","cookie")
@@ -524,13 +525,9 @@ def processAddToCart(productInfo):
     for index in range(0,len(captchaTokens)):
       captchaTokensReversed.append(captchaTokens.pop())
   logging.debug('starting browser')
-  browser = getChromeDriver(chromeFolderLocation='ChromeFolder')
-  '''
-  purge previous purchase record from cookies.
-  FIXME: use mktemp instead of fixed directory each time, and we can
-  eliminate this.
-  '''
-  browser.delete_all_cookies()
+  cache = tempfile.mkdtemp(suffix='.adidas.chrome')
+  logging.debug('browser cache: %s', cache)
+  browser = getChromeDriver(chromeFolderLocation=cache, proxy=PROXY)
   browser.implicitly_wait(30)  # seconds to wait for page load after click
   logging.debug('beginning order loop')
   for mySize in mySizes:
@@ -564,7 +561,7 @@ import selenium
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
-def getChromeDriver(chromeFolderLocation=None):
+def getChromeDriver(chromeFolderLocation=None, proxy=''):
   chromedriver=None
   if "nt" in os.name:
   #Es ventanas?
@@ -595,12 +592,10 @@ def getChromeDriver(chromeFolderLocation=None):
     chrome_options.add_argument("--user-data-dir="+chromeFolderLocation)
   if False and proxy:
     '''
-    with --proxy-server enabled, browser fails to work, even on the bypassed
-    site. it works from the command line, but not with chromedriver
+    with --proxy-server enabled, browser fails to work
+    it works from the command line, but not with chromedriver
     '''
     chrome_options.add_argument('--proxy-server="%s"' % proxy)
-    chrome_options.add_argument('--proxy-bypass-list="%s:%s"' % (
-      harvestDomain, phpServerPort))
   driver = webdriver.Chrome(chromedriver,chrome_options=chrome_options)
   return driver
 
@@ -657,8 +652,9 @@ def addToCartChromeAJAX(pid,captchaToken,browser=None):
     print(d_()+z_("Debug")+o_(script))
     print(d_()+z_("Debug")+o_(externalScript))
   if not browser:
-    browser=getChromeDriver(chromeFolderLocation="ChromeFolder")
-    browser.delete_all_cookies()
+    cache = tempfile.mkdtemp(suffix='.adidas.chrome')
+    logging.debug('browser cache: %s', cache)
+    browser=getChromeDriver(chromeFolderLocation=cache, proxy=PROXY)
   browser.get(baseADCUrl)
   if (len(scriptURL) > 0) and (".js" in scriptURL):
     print (d_()+s_("External Script"))
@@ -742,7 +738,9 @@ def getToken(driver,mainWindow):
 
 def harvestTokensManually():
   print (d_()+s_("Manual Token Harvest")+lb_("Number of tokens harvested: "+str(len(captchaTokens))))
-  browser=getChromeDriver(chromeFolderLocation="ChromeTokenHarvestFolder")
+  cache = tempfile.mkdtemp(suffix='.tokenharvest.chrome')
+  logging.debug('browser cache: %s', cache)
+  browser=getChromeDriver(chromeFolderLocation=cache)
   url="http://"+harvestDomain+":"+phpServerPort+"/harvest.php"
   while len(captchaTokens) < numberOfTokens:
     browser.get(url)
@@ -775,7 +773,9 @@ def login(browser=None):
         logging.warn('Cannot login. No username/password in config.cfg')
         return false
     if browser is None:
-        browser = getChromeDriver(chromeFolderLocation='ChromeFolder')
+        cache = tempfile.mkdtemp(suffix='.adidas.chrome')
+        logging.debug('browser cache: %s', cache)
+        browser = getChromeDriver(chromeFolderLocation=cache, proxy=PROXY)
     browser.get('https://www.%s/' % marketDomain)
     login_link = browser.find_element_by_xpath('//*[@class="selfservice-link-login"]')
     if login_link.tag_name != 'a':
