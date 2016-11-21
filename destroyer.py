@@ -526,6 +526,9 @@ def add_to_carts(products=None):
     pipes = []
     done = 0
     for index in range(len(accounts)):
+        if not tokens:
+            logging.warn('No more tokens, skipping remaining accounts')
+            break
         size, user, password, proxy = accounts[index].split(':')
         if size not in products['productStock']:
             logging.info('No stock of size %s is kept on this site', size)
@@ -538,11 +541,12 @@ def add_to_carts(products=None):
             target = add_to_cart,
             args = (
                 products, index, size, (user, password),
-                tokens[index], proxy, child_end),
+                tokens.pop(0), proxy, child_end
+            )
         )
         process.start()
         pipes.append(parent_end)
-    while done < len(accounts):
+    while done < len(pipes):
         readable = select.select(pipes, [], [])[0]
         logging.debug('found readable pipes: %s', readable)
         for socket in readable:
@@ -815,7 +819,11 @@ def harvest_tokens(number=1):
         browser.implicitly_wait(wait)
         start = time.time()
         browser.get(url)
-        token_element = browser.find_element_by_id('token')
+        try:
+            token_element = browser.find_element_by_id('token')
+        except selenium.common.exceptions.NoSuchElementException:
+            logging.warn('Timed out trying to get token')
+            break
         logging.debug('token_element found: %s', token_element)
         token = token_element.get_attribute("value")
         tokens.append(token)
