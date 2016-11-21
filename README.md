@@ -4,7 +4,7 @@ Python 3 implementation of d3stryr-3stripes
 # Questions/Problems/Lurking: [http://bit.ly/d3stripesQA](http://bit.ly/d3stripesQA) 
 
 ## Requirements:
-1. Python 3 (Google how to get it)
+1. Python 3.5.2 - [https://www.python.org/downloads/](https://www.python.org/downloads/)
    
    Required modules: selenium, requests, virtualenv (optional - but is used in the instructions)
    
@@ -13,13 +13,20 @@ Python 3 implementation of d3stryr-3stripes
    ```
    pip3 install virtualenv
    ```
+   
+   If you don't have pip3 already installed then install it with (assuming you have Python 3.5.x installed):
+   
+   ```
+   easy_install-3.5 pip
+   ```
+   
 
 2. chromedriver - [https://sites.google.com/a/chromium.org/chromedriver/](https://sites.google.com/a/chromium.org/chromedriver/)
 
    Neededed to drive Chrome.
    Download the appropriate version for your OS.
 
-   **Windows** users: place the `chromedriver.exe` file in `C:\Windows` folder.
+   **Windows** users: place the `chromedriver.exe` file in the same folder as `d3stryr-3stripes.py` OR in `C:\Windows` folder.
 
    **Mac/Linux** users: place the `chromedriver` file in the same folder as `d3stryr-3stripes.py`.
 
