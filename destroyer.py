@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import sys, os, configparser, logging, tempfile, multiprocessing, time, datetime
+import sys, os, configparser, logging, tempfile, multiprocessing, time
+import datetime, select
 logging.basicConfig(level=logging.DEBUG if __debug__ else logging.INFO)
 # make sure we're in same directory as config.cfg
 os.chdir(os.path.dirname(sys.argv[0]))
@@ -512,6 +513,55 @@ def printProductInfo(productInfo):
     print(d_()+s_(size.ljust(5," ")+" / "+productInfo["productStock"][size]["pid"])+lb_(str(productInfo["productStock"][size]["ATS"]).rjust(6," ")))
   return
 
+def add_to_carts(products=None):
+    '''
+    Using multiprocessing, add shoes to shopping carts of individual accounts
+    '''
+    if products is None:
+        products = getProductInfo()
+    accounts = USER.get('shoppingcarts', '').split(',')
+    tokens = harvest_tokens(len(accounts))
+    pipes = []
+    done = 0
+    for index in range(len(accounts)):
+        size, user, password, proxy = accounts[index].split(':')
+        if size not in products['productStock']:
+            logging.info('No stock of size %s is kept on this site', size)
+            continue
+        elif products['productStock'][size]['ATS'] == 0:
+            logging.info('Size %s is not currently in stock', size)
+            continue
+        parent_end, child_end = multiprocessing.Pipe()
+        process = multiprocessing.Process(
+            target = add_to_cart,
+            args = (
+                products, index, size, (user, password),
+                tokens[index], proxy, child_end),
+        )
+        pipes.append(parent_end)
+    while done < len(accounts):
+        readable = select.select(pipes, [], [])[0]
+        for pipe in readable:
+            result = pipe.recv()
+            logging.info('result from child process: %s', result)
+            done += 1
+
+def add_to_cart(products, process_id, size, credentials, token, proxy, socket):
+    '''
+    Add size to cart, logging in afterwards if credentials are supplied
+    '''
+    logging.debug('starting browser')
+    cache = tempfile.mkdtemp(suffix='.adidas.chrome')
+    logging.debug('browser cache: %s', cache)
+    browser = getChromeDriver(chromeFolderLocation=cache)
+    browser.implicitly_wait(30)  # seconds to wait for page load after click
+    logging.debug('ordering size %s', size)
+    product_id = products['productStock'][size]['pid']
+    addToCartChromeAjax(product_id, token, browser)
+    login(browser, *credentials, has_link=True)
+    browser.quit()
+    pipe.send((process_id, size, 1))
+
 def processAddToCart(productInfo):
   captchaTokensReversed=[]
   if manuallyHarvestTokens:
@@ -523,6 +573,8 @@ def processAddToCart(productInfo):
   logging.debug('browser cache: %s', cache)
   browser = getChromeDriver(chromeFolderLocation=cache)
   browser.implicitly_wait(30)  # seconds to wait for page load after click
+  username = USER.get('username', '')
+  password = USER.get('password', '')
   logging.debug('beginning order loop')
   for mySize in mySizes:
     logging.debug('ordering size %s', mySize)
@@ -545,7 +597,7 @@ def processAddToCart(productInfo):
           #No manual tokens to pop - so lets use 2captcha
           captchaToken=getACaptchaTokenFrom2Captcha()
       addToCartChromeAJAX(pid,captchaToken,browser)
-      login(browser, has_link=True)
+      login(browser, username, password, has_link=True)
       browser.quit()
     except KeyError:
       print (d_()+x_("Add-To-Cart")+lr_(mySize+" : "+"Not Found"))
@@ -789,7 +841,7 @@ def harvestTokensManually():
     print (d_()+s_("Total Time Elapsed")+lb_(str(round(elapsedTime,2)) + " seconds"))
   browser.quit()
 
-def login(browser=None, has_link=False):
+def login(browser=None, username=None, password=None, has_link=False):
     '''
     Login to Adidas
 
@@ -798,7 +850,7 @@ def login(browser=None, has_link=False):
     Set has_link to True if the currently loaded page is expected to already
     have a login link.
     '''
-    if not USER.get('username', '') and USER.get('password', ''):
+    if not username and password:
         logging.warn('Cannot login. No username/password in config.cfg')
         return false
     if browser is None:
@@ -820,8 +872,8 @@ def login(browser=None, has_link=False):
     input_password = browser.find_element_by_name('password')
     submit = browser.find_element_by_name('signinSubmit')
     logging.debug('Found login page successfully, so logging in')
-    input_username.send_keys(USER['username'])
-    input_password.send_keys(USER['password'])
+    input_username.send_keys(username)
+    input_password.send_keys(password)
     submit.click()
     logging.debug('Waiting for login success or failure')
     try:
