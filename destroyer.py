@@ -538,9 +538,11 @@ def add_to_carts(products=None):
                 products, index, size, (user, password),
                 tokens[index], proxy, child_end),
         )
+        process.start()
         pipes.append(parent_end)
     while done < len(accounts):
         readable = select.select(pipes, [], [])[0]
+        logging.debug('found readable pipes: %s', readable)
         for pipe in readable:
             result = pipe.recv()
             logging.info('result from child process: %s', result)
@@ -557,7 +559,7 @@ def add_to_cart(products, process_id, size, credentials, token, proxy, socket):
     browser.implicitly_wait(30)  # seconds to wait for page load after click
     logging.debug('ordering size %s', size)
     product_id = products['productStock'][size]['pid']
-    addToCartChromeAjax(product_id, token, browser)
+    addToCartChromeAJAX(product_id, token, browser)
     login(browser, *credentials, has_link=True)
     browser.quit()
     pipe.send((process_id, size, 1))
@@ -788,6 +790,13 @@ def harvest_tokens(number=1):
 
     These tokens can then be passed to Adidas within 120 seconds to bypass
     their captchas.
+
+    *PLEASE NOTE* this does not click the "I am not a robot" checkbox, nor
+    does it click the final <Submit> button, as the previous routine did.
+    This was done to simplify the code, but has the added benefit of making
+    the captchas much easier to solve, since the reCaptcha script detected
+    the robotic clicking in the previous code, and as a result was much
+    tougher scoring the puzzles.
     '''
     tokens = []
     elapsed = 0
