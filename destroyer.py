@@ -543,8 +543,8 @@ def add_to_carts(products=None):
     while done < len(accounts):
         readable = select.select(pipes, [], [])[0]
         logging.debug('found readable pipes: %s', readable)
-        for pipe in readable:
-            result = pipe.recv()
+        for socket in readable:
+            result = socket.recv()
             logging.info('result from child process: %s', result)
             done += 1
 
@@ -562,7 +562,7 @@ def add_to_cart(products, process_id, size, credentials, token, proxy, socket):
     addToCartChromeAJAX(product_id, token, browser)
     login(browser, *credentials, has_link=True)
     browser.quit()
-    pipe.send((process_id, size, 1))
+    socket.send((process_id, size, 1))
 
 def processAddToCart(productInfo):
   captchaTokensReversed=[]
