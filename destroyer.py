@@ -560,7 +560,7 @@ def add_to_cart(products, process_id, size, credentials, token, proxy, socket):
     logging.debug('ordering size %s', size)
     product_id = products['productStock'][size]['pid']
     addToCartChromeAJAX(product_id, token, browser)
-    login(browser, *credentials, has_link=True)
+    login(*credentials, browser, has_link=True)
     browser.quit()
     socket.send((process_id, size, 1))
 
@@ -599,7 +599,7 @@ def processAddToCart(productInfo):
           #No manual tokens to pop - so lets use 2captcha
           captchaToken=getACaptchaTokenFrom2Captcha()
       addToCartChromeAJAX(pid,captchaToken,browser)
-      login(browser, username, password, has_link=True)
+      login(username, password, browser, has_link=True)
       browser.quit()
     except KeyError:
       print (d_()+x_("Add-To-Cart")+lr_(mySize+" : "+"Not Found"))
@@ -850,7 +850,7 @@ def harvestTokensManually():
     print (d_()+s_("Total Time Elapsed")+lb_(str(round(elapsedTime,2)) + " seconds"))
   browser.quit()
 
-def login(browser=None, username=None, password=None, has_link=False):
+def login(username=None, password=None, browser=None, has_link=False):
     '''
     Login to Adidas
 
@@ -859,13 +859,14 @@ def login(browser=None, username=None, password=None, has_link=False):
     Set has_link to True if the currently loaded page is expected to already
     have a login link.
     '''
-    if not username and password:
+    if not (username and password):
         logging.warn('Cannot login. No username/password in config.cfg')
-        return false
+        return False
     if browser is None:
         cache = tempfile.mkdtemp(suffix='.adidas.chrome')
         logging.debug('browser cache: %s', cache)
         browser = getChromeDriver(chromeFolderLocation=cache)
+        browser.implicitly_wait(30)
     if not has_link:
         browser.get('https://www.%s/' % marketDomain)
     login_link = browser.find_element_by_xpath(
