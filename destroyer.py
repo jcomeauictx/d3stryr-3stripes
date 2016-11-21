@@ -895,6 +895,11 @@ def login(username=None, password=None, browser=None, has_link=False):
 
 if __name__ == '__main__':
     # allows for testing individual routines from command line
-    command = sys.argv[1]
+    if len(sys.argv) > 1:
+        command = sys.argv[1]
+    else:
+        command = 'add_to_carts'
     if command in globals():
         print(eval(command)(*sys.argv[2:]))
+    else:
+        logging.critical('No such routine %s', command)
