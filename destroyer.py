@@ -5,7 +5,9 @@ logging.basicConfig(
     level=logging.DEBUG if __debug__ else logging.INFO,
     format='%(module)s %(asctime)s %(message)s')
 # make sure we're in same directory as config.cfg
-os.chdir(os.path.dirname(sys.argv[0]))
+SCRIPT_DIR = os.path.dirname(sys.argv[0])
+if SCRIPT_DIR:
+    os.chdir(SCRIPT_DIR)
 #Parse configuration file
 CONFIG = configparser.ConfigParser()
 CONFIG.read('config.cfg')
